@@ -6,6 +6,7 @@ yuey1@andrew.cmu.edu
 import sys
 import os
 import re
+import nltk
 def count_doc_number(path):
     """
     count the number of documents 
@@ -117,5 +118,22 @@ def rank_selection(input_list,sort_key,lo,hi,n):
         rank_selection(input_list,sort_key,lo,pivot_idx-1,n-target_n)
     else:
         rank_selection(input_list,sort_key,pivot_idx,hi,n)
+def get_nonstop_word(word_count,n):
+    """
+    get the n most frequent non stop word
+    @param word_count, word count hash table
+    @paran n, number of non stop word we want
+    @return a list of target word
+    """
+    # get rid of all stop word
+    tmp_word_list = []
+    for t in word_count.keys():
+        if not t in nltk.corpus.stopwords.words():
+            tmp_word_list.append((t,word_count[t]))
+    rank_selection(tmp_word_list,1,0,len(tmp_word_list)-1,n)
+    result = []
+    for t in tmp_word_list[-n:]:
+        result.append(t[0])
+    return result
 if __name__ == "__main__":
     print(count_doc_number(sys.argv[1]))
