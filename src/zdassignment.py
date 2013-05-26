@@ -30,17 +30,36 @@ def word_tokenizer(word):
     for i in xrange(len(word_list)):
         word_list[i] = re.sub("\\W",'',word_list[i])    
     return word_list
-def naive_bayes_train(path):
+def read_files(path):
     """
-    train the naive bayes classifer
-    it's basically tokenizing the documents and
-    store the count of each word into a hashtable
+    read all document from the path into memory
+    count the number of occurence of each word and
+    store it in a hash table
     @param path, directory which contains all files
     @return a dictionary, the count of each word in the 
     training set
     """
+    if not os.path.isdir(path):
+        print "Invalid input path"
+        return None
+    
+    # standarize the path
+    if path[-1] == '/':
+        path = path[:-1]
 
-
-
+    files = os.listdir(path) # get all file names
+    word_count = {} #initialized the hash map
+    for f in files:
+        file_path = path + "/" + f
+        with open(file_path,'r') as fid:
+            tmp_word = fid.read()
+        word_list = word_tokenizer(tmp_word)
+        for w in word_list:
+            if not w == '':
+                if word_count.has_key(w):
+                    word_count[w] += 1
+                else:
+                    word_count[w] = 1
+    return word_count
 if __name__ == "__main__":
     print(count_doc_number(sys.argv[1]))
