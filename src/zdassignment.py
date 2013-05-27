@@ -224,6 +224,26 @@ def naive_bayes_predict(model,doc):
         return "typea"
     else:
         return "typeb"
+def naive_bayes_classify(path,model):
+    """
+    predict the type of every document in the directory
+    @param path, directory containing all documents
+    @param model, dictionary, the naive bayes model
+    """
+    if not os.path.isdir(path):
+        print "Invalid input path"
+        return
+    if path[-1] == '/':
+        path = path[:-1]
+    files = os.listdir(path)
+    for f in files:
+        file_path = path + "/" + f
+        with open(file_path,'r') as fid:
+            tmp_doc = fid.read()
+        print(f+" type: " + naive_bayes_predict(model,tmp_doc))
 if __name__ == "__main__":
     #print(count_doc_number(sys.argv[1]))
-    get_summary(sys.argv[1])
+    #get_summary(sys.argv[1])
+    model = naive_bayes_train(sys.argv[1],sys.argv[2],
+    sys.argv[3],sys.argv[4])
+    naive_bayes_classify(sys.argv[5],model)
