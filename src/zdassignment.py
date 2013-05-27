@@ -7,6 +7,7 @@ import sys
 import os
 import re
 import nltk
+import math
 def count_doc_number(path):
     """
     count the number of documents 
@@ -47,7 +48,7 @@ def read_files(path):
     # standarize the path
     if path[-1] == '/':
         path = path[:-1]
-
+    total_count = 0 # count the total number of words
     files = os.listdir(path) # get all file names
     word_count = {} #initialized the hash map
     for f in files:
@@ -57,10 +58,12 @@ def read_files(path):
         word_list = word_tokenizer(tmp_word)
         for w in word_list:
             if not w == '':
+                total_count += 1
                 if word_count.has_key(w):
                     word_count[w] += 1
                 else:
                     word_count[w] = 1
+    word_count["#total_count"] = total_count
     return word_count
 def rank_selection(input_list,sort_key,lo,hi,n):
     """
@@ -192,6 +195,35 @@ def naive_bayes_train(path1,label1,path2,label2):
     """
     result = {label1:read_files(path1),label2:read_files(path2)}
     return result
+def naive_bayes_predict(model,doc):
+    """
+    predict the type of a document given the model
+    @param model, dictionary, the naive bayes classifier
+    @param doc, string, the document body
+    @return string, the predicted type
+    """
+    word_list = word_tokenizer(doc)
+    # compute the score for each type
+    typea_score = 0
+    typea_total = model["typea"]["#total_count"]
+    typeb_score = 0
+    typeb_total = model["typeb"]["#total_count"]
+    for w in word_list:
+        count_typea = 0
+        count_typeb = 0
+        if model["typea"].has_key(w):
+            count_typea = model["typea"][w]
+        if model["typeb"].has_key(w):
+            count_typeb = model["typeb"][w]
+        # use plus 1 smooth term
+        typea_score += math.log(float(count_typea+1)/(typea_total+len(model["typea"])))
+        typeb_score += math.log(float(count_typeb+1)/(typeb_total+len(model["typeb"])))
+    typea_score += math.log(float(typea_total)/(typea_total+typeb_total))
+    typeb_score += math.log(float(typeb_total)/(typea_total+typeb_total))
+    if typea_score >= typeb_score:
+        return "typea"
+    else:
+        return "typeb"
 if __name__ == "__main__":
     #print(count_doc_number(sys.argv[1]))
     get_summary(sys.argv[1])
