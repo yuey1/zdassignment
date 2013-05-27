@@ -80,7 +80,7 @@ def rank_selection(input_list,sort_key,lo,hi,n):
     if sort_key < 0 or sort_key >= len(input_list[0]):
         print "invalid sort_key"
         return 
-    if hi - lo + 1 < n:
+    if hi - lo + 1 <= n:
         return 
     if lo < 0 or hi >= len(input_list):
         return 
@@ -117,7 +117,7 @@ def rank_selection(input_list,sort_key,lo,hi,n):
     elif target_n < n:
         rank_selection(input_list,sort_key,lo,pivot_idx-1,n-target_n)
     else:
-        rank_selection(input_list,sort_key,pivot_idx,hi,n)
+        rank_selection(input_list,sort_key,pivot_idx+1,hi,n)
 def get_nonstop_word(word_count,n):
     """
     get the n most frequent non stop word
@@ -133,6 +133,24 @@ def get_nonstop_word(word_count,n):
     rank_selection(tmp_word_list,1,0,len(tmp_word_list)-1,n)
     result = []
     for t in tmp_word_list[-n:]:
+        result.append(t[0])
+    return result
+def get_verb(word_count,n):
+    """
+    get the n most frequent verb for some types 
+    of documents
+    @param word_count, the word count hash map
+    @param n, number of word we want
+    @return a list of string
+    """
+    tags = nltk.pos_tag(word_count.keys())
+    verb_list = []
+    for t in tags:
+        if "V" in t[1]:
+            verb_list.append((t[0],word_count[t[0]]))
+    rank_selection(verb_list,1,0,len(verb_list)-1,n)
+    result = []
+    for t in verb_list[-n:]:
         result.append(t[0])
     return result
 if __name__ == "__main__":
