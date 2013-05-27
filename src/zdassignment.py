@@ -131,7 +131,7 @@ def get_nonstop_word(word_count,n):
     # get rid of all stop word
     tmp_word_list = []
     for t in word_count.keys():
-        if not t in nltk.corpus.stopwords.words():
+        if not t in nltk.corpus.stopwords.words() and t[0] != "#":
             tmp_word_list.append((t,word_count[t]))
     rank_selection(tmp_word_list,1,0,len(tmp_word_list)-1,n)
     result = []
@@ -149,7 +149,7 @@ def get_verb(word_count,n):
     tags = nltk.pos_tag(word_count.keys())
     verb_list = []
     for t in tags:
-        if "V" in t[1]:
+        if "V" in t[1] and t[0][0] != '#':
             verb_list.append((t[0],word_count[t[0]]))
     rank_selection(verb_list,1,0,len(verb_list)-1,n)
     result = []
