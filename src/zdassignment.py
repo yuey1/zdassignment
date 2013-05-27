@@ -181,6 +181,17 @@ def get_summary(path):
     print("10 most frequent verbs: ")
     for s in verbs:
         print(s)
+def naive_bayes_train(path1,label1,path2,label2):
+    """
+    train the naive bayes classifier
+    @param path1, directory containing all type 1 document
+    @param label1, string, the type1 name
+    @param path2, directory containing all type 2 document
+    @param label2, string, the type2 name
+    @return dictionary, key:label, value: word_count table
+    """
+    result = {label1:read_files(path1),label2:read_files(path2)}
+    return result
 if __name__ == "__main__":
     #print(count_doc_number(sys.argv[1]))
     get_summary(sys.argv[1])
