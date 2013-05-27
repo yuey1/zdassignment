@@ -42,7 +42,7 @@ def read_files(path):
     """
     if not os.path.isdir(path):
         print "Invalid input path"
-        return None
+        return 
     
     # standarize the path
     if path[-1] == '/':
@@ -153,5 +153,34 @@ def get_verb(word_count,n):
     for t in verb_list[-n:]:
         result.append(t[0])
     return result
+def get_summary(path):
+    """
+    print get summary of the current type of document
+    including
+    1 number of documents
+    2 number of unique words
+    3 top 10 most frequent non stop words
+    4 top 10 most frequent verbs
+    @param path, the directory of all documents
+    @return none
+    """
+    if not os.path.isdir(path):
+        print "Invalid input path"
+        return
+    word_count = read_files(path)
+    doc_number = count_doc_number(path)
+    unique = len(word_count)
+    non_stop_words = get_nonstop_word(word_count,10)
+    verbs = get_verb(word_count,10)
+    print("Number of files: " + str(doc_number) + "\n")
+    print("Number of unique words: " + str(unique) + "\n")
+    print("10 most frequent non stop words: ")
+    for s in non_stop_words:
+        print(s)
+    print "\n"
+    print("10 most frequent verbs: ")
+    for s in verbs:
+        print(s)
 if __name__ == "__main__":
-    print(count_doc_number(sys.argv[1]))
+    #print(count_doc_number(sys.argv[1]))
+    get_summary(sys.argv[1])
