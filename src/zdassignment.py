@@ -242,8 +242,20 @@ def naive_bayes_classify(path,model):
             tmp_doc = fid.read()
         print(f+" type: " + naive_bayes_predict(model,tmp_doc))
 if __name__ == "__main__":
-    #print(count_doc_number(sys.argv[1]))
-    #get_summary(sys.argv[1])
-    model = naive_bayes_train(sys.argv[1],sys.argv[2],
-    sys.argv[3],sys.argv[4])
-    naive_bayes_classify(sys.argv[5],model)
+    if sys.argv[1] != "-s" and sys.argv[1] != "-c":
+        print("Usage: \n" +
+        "to get summary of a type of document, use \n" +
+        "python zdassignment.py -s path \n" +
+        "to classify documents, use \n" +
+        "python zdassignment.py -c typea_path typea typeb_path typeb test_files")
+    if sys.argv[1] == "-s":
+        if len(sys.argv) != 3:
+            print "Usage: python zdassignment.py -s path"
+        else:
+            get_summary(sys.argv[2])
+    if sys.argv[1] == "-c":
+        if len(sys.argv) != 7:
+            print "Usage: python zdassignment.py -c typea_path typea typeb_path typeb test_files"
+        else:
+            model = naive_bayes_train(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5])
+            naive_bayes_classify(sys.argv[6],model)
