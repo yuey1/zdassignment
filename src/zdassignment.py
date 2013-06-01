@@ -8,6 +8,10 @@ import re
 import nltk
 import math
 import argparse
+import pylab as pl
+
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
 
 def count_doc_number(path):
     """count the number of documents 
@@ -246,7 +250,7 @@ def naive_bayes_predict(model,doc):
     model -- dictionary, the naive bayes classifier
     doc -- string, the document body
 
-    return string, the predicted type
+    return int, the predicted type, typea is 1, typeb is 0
     
     """
     word_list = word_tokenizer(doc)
@@ -268,9 +272,9 @@ def naive_bayes_predict(model,doc):
     typea_score += math.log(float(typea_total) / (typea_total+typeb_total))
     typeb_score += math.log(float(typeb_total) / (typea_total+typeb_total))
     if typea_score >= typeb_score:
-        return "typea"
+        return 1
     else:
-        return "typeb"
+        return 0
 
 
 def naive_bayes_classify(path,model):
@@ -279,8 +283,10 @@ def naive_bayes_classify(path,model):
     Arguments:
     path -- directory containing all documents
     model -- dictionary, the naive bayes model
-
+    
+    return a list of labels
     """
+    predict_label = []
     if not os.path.isdir(path):
         print "Invalid input path"
         return
@@ -291,7 +297,9 @@ def naive_bayes_classify(path,model):
         file_path = path + "/" + f
         with open(file_path,'r') as fid:
             tmp_doc = fid.read()
-        print(f+" type: " + naive_bayes_predict(model,tmp_doc))
+        predict_label.append(naive_bayes_predict(model,tmp_doc))
+        # print(f+" type: " + naive_bayes_predict(model,tmp_doc))
+    return predict_label
 
 
 if __name__ == "__main__":
@@ -303,7 +311,7 @@ if __name__ == "__main__":
                         help='build classifier and test it, first path is'+ 
                         'training data path, second path is test data path.')
     args = parser.parse_args() # parse all arguments
-    '''
+    """
     if sys.argv[1] != "-s" and sys.argv[1] != "-c":
         print("Usage: \n" +
         "to get summary of a type of document, use \n" +
@@ -321,7 +329,7 @@ if __name__ == "__main__":
         else:
             model = naive_bayes_train(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5])
             naive_bayes_classify(sys.argv[6],model)
-    '''
+    """
     if  args.stat != None:
         get_summary(args.stat[0])
 
@@ -331,4 +339,20 @@ if __name__ == "__main__":
         model = naive_bayes_train(args.classification[0]+'/'+train_labels[0], 
                                   train_labels[0], args.classification[0]+'/'
                                   +train_labels[1], train_labels[1])
-        naive_bayes_classify(args.classification[1]+'/'+train_labels[0], model)
+        # generate test data true label
+        labels = [0] * len(os.listdir(args.classification[1]+'/' 
+                           +train_labels[0])) # typeb
+        labels += [1] * len(os.listdir(args.classification[1]+'/'
+                            +train_labels[1])) # typea
+        # predict the labels                    
+        predict_labels = naive_bayes_classify(args.classification[1] + '/'
+        + train_labels[0], model)
+        predict_labels += naive_bayes_classify(args.classification[1] + '/'
+        + train_labels[1], model)
+        # generate the metrics
+        print(classification_report(labels, predict_labels, target_names=train_labels))
+        cm = confusion_matrix(labels, predict_labels)
+        pl.matshow(cm)
+        pl.title('Confusion matrix')
+        pl.colorbar()
+        pl.show()
