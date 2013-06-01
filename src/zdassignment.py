@@ -1,4 +1,4 @@
-# zd assignment
+# zendeal assignment
 # Yue Yu
 # yuey1@andrew.cmu.edu
 
@@ -8,10 +8,20 @@ import re
 import nltk
 import math
 import argparse
-import pylab as pl
+import numpy as np
 
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import MultinomialNB
+from sklearn import tree
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.cross_validation import StratifiedKFold
+from sklearn.grid_search import GridSearchCV
+
 
 def count_doc_number(path):
     """count the number of documents 
@@ -43,7 +53,7 @@ def word_tokenizer(word):
     # remove all non alphabetical char in each word
     word_list = re.compile("[\\s+ || ,.!?]").split(word) 
     for i in xrange(len(word_list)):
-        word_list[i] = re.sub("\\W",'',word_list[i])    
+        word_list[i] = re.sub("\\W", '', word_list[i])    
     return word_list
 
 
@@ -72,7 +82,7 @@ def read_files(path):
 
     for f in files:
         file_path = path + "/" + f
-        with open(file_path,'r') as fid:
+        with open(file_path, 'r') as fid:
             tmp_word = fid.read()
         word_list = word_tokenizer(tmp_word)
         for w in word_list:
@@ -86,7 +96,7 @@ def read_files(path):
     return word_count
 
 
-def rank_selection(input_list,sort_key,lo,hi,n):
+def rank_selection(input_list, sort_key, lo, hi, n):
     """partially sort the list according to some keys using pivoting
     technique, the running time is O(log n)
 
@@ -144,12 +154,12 @@ def rank_selection(input_list,sort_key,lo,hi,n):
     if target_n == n:
         return 
     elif target_n < n:
-        rank_selection(input_list,sort_key,lo,pivot_idx-1,n-target_n)
+        rank_selection(input_list, sort_key, lo, pivot_idx-1, n-target_n)
     else:
-        rank_selection(input_list,sort_key,pivot_idx+1,hi,n)
+        rank_selection(input_list, sort_key, pivot_idx+1, hi, n)
 
 
-def get_nonstop_word(word_count,n):
+def get_nonstop_word(word_count, n):
     """get the n most frequent non stop word
 
     Arguments:
@@ -163,15 +173,15 @@ def get_nonstop_word(word_count,n):
     tmp_word_list = []
     for t in word_count.keys():
         if not t in nltk.corpus.stopwords.words() and t[0] != "#":
-            tmp_word_list.append((t,word_count[t]))
-    rank_selection(tmp_word_list,1,0,len(tmp_word_list)-1,n)
+            tmp_word_list.append((t, word_count[t]))
+    rank_selection(tmp_word_list,1,0,len(tmp_word_list)-1, n)
     result = []
     for t in tmp_word_list[-n:]:
         result.append(t[0])
     return result
 
 
-def get_verb(word_count,n):
+def get_verb(word_count, n):
     """get the n most frequent verb for some types 
     of documents
 
@@ -187,8 +197,8 @@ def get_verb(word_count,n):
     for t in tags:
         # get verbs
         if "V" in t[1] and t[0][0] != '#':
-            verb_list.append((t[0],word_count[t[0]]))
-    rank_selection(verb_list,1,0,len(verb_list)-1,n) # select top n words
+            verb_list.append((t[0], word_count[t[0]]))
+    rank_selection(verb_list, 1, 0, len(verb_list)-1, n) # select top n words
     result = []
     for t in verb_list[-n:]:
         result.append(t[0])
@@ -213,8 +223,8 @@ def get_summary(path):
     word_count = read_files(path)
     doc_number = count_doc_number(path)
     unique = len(word_count)
-    non_stop_words = get_nonstop_word(word_count,10)
-    verbs = get_verb(word_count,10)
+    non_stop_words = get_nonstop_word(word_count, 10)
+    verbs = get_verb(word_count, 10)
     print("Number of files: " + str(doc_number) + "\n")
     print("Number of unique words: " + str(unique) + "\n")
     print("10 most frequent non stop words: ")
@@ -226,7 +236,7 @@ def get_summary(path):
         print(s)
 
 
-def naive_bayes_train(path1,label1,path2,label2):
+def naive_bayes_train(path1, label1, path2, label2):
     """train the naive bayes classifier
     
     Arguments:
@@ -238,11 +248,11 @@ def naive_bayes_train(path1,label1,path2,label2):
     return dictionary, key:label, value: word_count table
     
     """
-    result = {label1:read_files(path1),label2:read_files(path2)}
+    result = {label1:read_files(path1), label2:read_files(path2)}
     return result
 
 
-def naive_bayes_predict(model,doc):
+def naive_bayes_predict(model, doc):
     """ predict the type of a document given the model
 
     Arguments:
@@ -277,7 +287,7 @@ def naive_bayes_predict(model,doc):
         return 0
 
 
-def naive_bayes_classify(path,model):
+def naive_bayes_classify(path, model):
     """predict the type of every document in the directory
 
     Arguments:
@@ -295,11 +305,169 @@ def naive_bayes_classify(path,model):
     files = os.listdir(path)
     for f in files:
         file_path = path + "/" + f
-        with open(file_path,'r') as fid:
+        with open(file_path, 'r') as fid:
             tmp_doc = fid.read()
-        predict_label.append(naive_bayes_predict(model,tmp_doc))
-        # print(f+" type: " + naive_bayes_predict(model,tmp_doc))
+        predict_label.append(naive_bayes_predict(model, tmp_doc))
     return predict_label
+
+
+def classifiers(train_data_path, test_data_path):
+    """train and test SVM, Naive Bayes, Decision tree
+    classifiers with different feature selection methods by 
+    using scikit library
+     
+    Arguments:
+    train_data_path -- director containing training data, in this case
+                  it contains typea and typeb folder
+    test_data_path -- director containing test data, in this case
+                 it contains typea and typeb folder
+    
+    return model evaluation reports for each classifier 
+
+    """
+    # remove the last possible / in the path
+    if train_data_path[-1] == '/':
+        train_data_path = train_data_path[:-1]
+    if test_data_path[-1] == '/':
+        test_data_path = test_data_path[:-1]
+    # check input integrity
+    if not os.path.isdir(train_data_path) or not os.path.isdir(test_data_path):
+        print 'Invalid Input directory'
+        return
+    labels = os.listdir(train_data_path)
+    if len(labels) != 2:
+        print 'there must be two different type of documents'
+        return
+    # get the labels
+    type1 = labels[0]
+    type2 = labels[1]
+    if (not type1 in os.listdir(test_data_path) or
+       not type2 in os.listdir(test_data_path)):
+        print 'Wrong test files'
+        return
+
+    # first read all data into memory
+    train_data = []
+    train_label = []
+    test_data = []
+    test_label = []
+    # read training data and generate labels
+    tmp_path = train_data_path + '/' + type1
+    tmp_files = os.listdir(tmp_path)
+    for f in tmp_files:
+        with open(tmp_path+'/'+f, 'r') as fid:
+            train_data.append(fid.read())
+            train_label.append(0) # type1 is 0 type2 is 1
+    tmp_path = train_data_path + '/' + type2
+    tmp_files = os.listdir(tmp_path)
+    for f in tmp_files:
+        with open(tmp_path+'/'+f, 'r') as fid: 
+            train_data.append(fid.read())
+            train_label.append(1)
+    # read test data and generate labels
+    tmp_path = test_data_path + '/' + type1
+    tmp_files = os.listdir(tmp_path)
+    for f in tmp_files:
+        with open(tmp_path+'/'+f, 'r') as fid:
+            test_data.append(fid.read())
+            test_label.append(0)
+    tmp_path = test_data_path + '/' + type2
+    tmp_files = os.listdir(tmp_path)
+    for f in tmp_files:
+        with open(tmp_path+'/'+f, 'r') as fid:
+            test_data.append(fid.read())
+            test_label.append(1)
+    # use bag of words model to convert all documents into numerical vectors.
+    # three methods are used here, 
+    # 1 the unigram count, 
+    # 2 unigram and bigram count,
+    # 3 unigram count with tfidf reweighting
+    # besides, all words in training data with frequency less than 0.0005 are ignored
+    unigram_vectorizer = CountVectorizer(min_df=0.0005)
+    mix_vectorizer = CountVectorizer(ngram_range=(1,2), min_df=0.0005)
+    tfidf_transformer = TfidfTransformer()
+    # next, for each feature dictionary, build and test SVM, Naive Bayes and 
+    # Decision Tree classifiers
+
+    # unigram count
+    X = unigram_vectorizer.fit_transform(train_data)
+    test_X = unigram_vectorizer.transform(test_data)
+    # Naive Bayes
+    nb = MultinomialNB()
+    y_pred = nb.fit(X, train_label).predict(test_X)
+    print 'Naive Bayes with unigram count'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
+    # Decision Tree
+    DT = tree.DecisionTreeClassifier()
+    y_pred = DT.fit(X.toarray(), train_label).predict(test_X.toarray())
+    print 'DecisionTree with unigram count'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
+    # Support Vector Machine
+    # first use grid search to determine C and gamma
+    C_range = 10.0 ** np.arange(-1, 1)
+    gamma_range = 10.0 ** np.arange(-1, 1)
+    param_grid = dict(gamma=gamma_range, C=C_range)
+    cv = StratifiedKFold(y=np.array(train_label), n_folds=3)
+    grid = GridSearchCV(SVC(), param_grid=param_grid, cv=cv)
+    grid.fit(X, np.array(train_label))
+    SVM = grid.best_estimator_ # the classifier with best C and Gamma.
+    y_pred = SVM.fit(X, train_label).predict(test_X)
+    print 'SVM with unigram count'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
+
+    # unigram and bigram count
+    X = mix_vectorizer.fit_transform(train_data)
+    test_X = mix_vectorizer.transform(test_data)
+    # Naive Bayes
+    nb = MultinomialNB()
+    y_pred = nb.fit(X, train_label).predict(test_X)
+    print 'Naive Bayes with unigram and bigram count'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
+    # Decision Tree
+    DT = tree.DecisionTreeClassifier()
+    y_pred = DT.fit(X.toarray(), train_label).predict(test_X.toarray())
+    print 'DecisionTree with unigram and bigram count'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
+    # Support Vector Machine
+    # first use grid search to determine C and gamma
+    C_range = 10.0 ** np.arange(-1, 1)
+    gamma_range = 10.0 ** np.arange(-1, 1)
+    param_grid = dict(gamma=gamma_range, C=C_range)
+    cv = StratifiedKFold(y=np.array(train_label), n_folds=3)
+    grid = GridSearchCV(SVC(), param_grid=param_grid, cv=cv)
+    grid.fit(X, np.array(train_label))
+    SVM = grid.best_estimator_ # the classifier with best C and Gamma.
+    y_pred = SVM.fit(X, train_label).predict(test_X)
+    print 'SVM with unigram and bigram count'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
+
+    # unigram count with tfidf
+    X = unigram_vectorizer.fit_transform(train_data)
+    X = tfidf_transformer.fit_transform(X)
+    test_X = unigram_vectorizer.transform(test_data)
+    test_X = tfidf_transformer.transform(test_X)
+    # Gaussian Naive Bayes
+    nb = GaussianNB()
+    y_pred = nb.fit(X.toarray(), train_label).predict(test_X.toarray())
+    print 'Naive Bayes with tfidf unigram'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
+    # Decision Tree
+    DT = tree.DecisionTreeClassifier()
+    y_pred = DT.fit(X.toarray(), train_label).predict(test_X.toarray())
+    print 'DecisionTree with tfidf unigram'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
+    # Support Vector Machine
+    # first use grid search to determine C and gamma
+    C_range = 10.0 ** np.arange(-1, 1)
+    gamma_range = 10.0 ** np.arange(-1, 1)
+    param_grid = dict(gamma=gamma_range, C=C_range)
+    cv = StratifiedKFold(y=np.array(train_label), n_folds=3)
+    grid = GridSearchCV(SVC(), param_grid=param_grid, cv=cv)
+    grid.fit(X, np.array(train_label))
+    SVM = grid.best_estimator_ # the classifier with best C and Gamma.
+    y_pred = SVM.fit(X, train_label).predict(test_X)
+    print 'SVM with tfidf unigram'
+    print(classification_report(test_label, y_pred.tolist(), target_names=labels))
 
 
 if __name__ == "__main__":
@@ -308,8 +476,14 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--stat', metavar='path', nargs=1,
                         help='get the statistics of current type of documents.')
     parser.add_argument('-c', '--classification', metavar='path', nargs=2, 
-                        help='build classifier and test it, first path is'+ 
-                        'training data path, second path is test data path.')
+                        help='build Naive Bayes classifier and test it,'+
+                        'first path is training data path, second path is'+
+                        'test data path.')
+    parser.add_argument('-p', '--predictions', metavar='path', nargs=2,
+                        help='use scikit library to build SVM Naive Bayes and'+
+                        'Decision Tree classifiers, print out all test result.'+
+                        'first path is training data path, second path is'+
+                        'test data path.')
     args = parser.parse_args() # parse all arguments
     """
     if sys.argv[1] != "-s" and sys.argv[1] != "-c":
@@ -351,8 +525,6 @@ if __name__ == "__main__":
         + train_labels[1], model)
         # generate the metrics
         print(classification_report(labels, predict_labels, target_names=train_labels))
-        cm = confusion_matrix(labels, predict_labels)
-        pl.matshow(cm)
-        pl.title('Confusion matrix')
-        pl.colorbar()
-        pl.show()
+
+    if args.predictions != None:
+        classifiers(args.predictions[0], args.predictions[1])
