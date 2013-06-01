@@ -1,45 +1,59 @@
-"""
-zd assignment
-Yue Yu
-yuey1@andrew.cmu.edu
-"""
+# zd assignment
+# Yue Yu
+# yuey1@andrew.cmu.edu
+
 import sys
 import os
 import re
 import nltk
 import math
+import argparse
+
 def count_doc_number(path):
-    """
-    count the number of documents 
+    """count the number of documents 
     in the directory
-    @param path, the directory path
-    @return the number of files in that path
+
+    Arguments:
+    path -- the directory path
+    
+    return the number of files in that path
+    
     """
     if not os.path.isdir(path):
         return 0
     return len(os.listdir(path))    
+
+
 def word_tokenizer(word):
-    """
-    split the string based on 
+    """split the string based on 
     space tab . ! ? :, and then get rid of 
     all non alphabetic char in each word
-    @param word, the string
-    @return a list of words
+    
+    Arguments:
+    word -- the word string
+
+    return a list of words
+
     """
-    word = word.lower() #convert all char into lower case
-    word_list = re.compile("[\\s+ || ,.!?]").split(word)
-    #remove all non alphabetical char in each word
+    word = word.lower() # convert all char into lower case
+    # remove all non alphabetical char in each word
+    word_list = re.compile("[\\s+ || ,.!?]").split(word) 
     for i in xrange(len(word_list)):
         word_list[i] = re.sub("\\W",'',word_list[i])    
     return word_list
+
+
 def read_files(path):
-    """
-    read all document from the path into memory
+    """read all document from the path into memory
     count the number of occurence of each word and
     store it in a hash table
-    @param path, directory which contains all files
-    @return a dictionary, the count of each word in the 
+    
+    Arguments:
+    path -- directory which contains all files
+    
+    return a dictionary, the count of each word in the 
     training set
+    
     """
     if not os.path.isdir(path):
         print "Invalid input path"
@@ -50,7 +64,8 @@ def read_files(path):
         path = path[:-1]
     total_count = 0 # count the total number of words
     files = os.listdir(path) # get all file names
-    word_count = {} #initialized the hash map
+    word_count = {} # initialized the hash map
+
     for f in files:
         file_path = path + "/" + f
         with open(file_path,'r') as fid:
@@ -65,17 +80,22 @@ def read_files(path):
                     word_count[w] = 1
     word_count["#total_count"] = total_count
     return word_count
+
+
 def rank_selection(input_list,sort_key,lo,hi,n):
-    """
-    partially sort the list according to some keys using pivoting
+    """partially sort the list according to some keys using pivoting
     technique, the running time is O(log n)
-    @param input_list, a list of tuples, in our case it would be
+
+    Arguments:
+    input_list -- a list of tuples, in our case it would be
     (word, count)
-    @param sort_key, the index of keys in the tuple we want to sort
-    @param lo, define the left bound of the list we want to sort
-    @param hi, define the right bount of the list we want to sort
-    @param n, the number of entries we want, in our case is 10
-    @return none, it sorts the list in place
+    sort_key -- the index of keys in the tuple we want to sort
+    lo -- define the left bound of the list we want to sort
+    hi -- define the right bount of the list we want to sort
+    n -- the number of entries we want, in our case is 10
+
+    return none, it sorts the list in place
+
     """
     # input integrity checking
     if len(input_list) == 0:
@@ -89,9 +109,11 @@ def rank_selection(input_list,sort_key,lo,hi,n):
         return 
     if lo >= hi:
         return
-    #base condition
+
+    # base condition
     if n == 0:
         return 
+
     pivot = input_list[hi][sort_key]
     lo_runner = lo
     hi_runner = hi - 1
@@ -99,7 +121,7 @@ def rank_selection(input_list,sort_key,lo,hi,n):
         if input_list[lo_runner][sort_key] < pivot:
             lo_runner += 1
         else:
-            #swap the lo and hi
+            # swap the lo and hi
             tmp_tuple = input_list[lo_runner]
             input_list[lo_runner] = input_list[hi_runner]
             input_list[hi_runner] = tmp_tuple
@@ -113,7 +135,7 @@ def rank_selection(input_list,sort_key,lo,hi,n):
     tmp_tuple = input_list[hi]
     input_list[hi] = input_list[pivot_idx]
     input_list[pivot_idx] = tmp_tuple
-
+    # recursion step
     target_n = hi - pivot_idx + 1
     if target_n == n:
         return 
@@ -121,12 +143,17 @@ def rank_selection(input_list,sort_key,lo,hi,n):
         rank_selection(input_list,sort_key,lo,pivot_idx-1,n-target_n)
     else:
         rank_selection(input_list,sort_key,pivot_idx+1,hi,n)
+
+
 def get_nonstop_word(word_count,n):
-    """
-    get the n most frequent non stop word
-    @param word_count, word count hash table
-    @paran n, number of non stop word we want
-    @return a list of target word
+    """get the n most frequent non stop word
+
+    Arguments:
+    word_count -- word count hash table
+    n -- number of non stop word we want
+    
+    return a list of target word
+    
     """
     # get rid of all stop word
     tmp_word_list = []
@@ -138,34 +165,43 @@ def get_nonstop_word(word_count,n):
     for t in tmp_word_list[-n:]:
         result.append(t[0])
     return result
+
+
 def get_verb(word_count,n):
-    """
-    get the n most frequent verb for some types 
+    """get the n most frequent verb for some types 
     of documents
-    @param word_count, the word count hash map
-    @param n, number of word we want
-    @return a list of string
+
+    Arguments:
+    word_count -- the word count hash map
+    n -- number of word we want
+    
+    return a list of string
+    
     """
-    tags = nltk.pos_tag(word_count.keys())
+    tags = nltk.pos_tag(word_count.keys()) # get tags
     verb_list = []
     for t in tags:
+        # get verbs
         if "V" in t[1] and t[0][0] != '#':
             verb_list.append((t[0],word_count[t[0]]))
-    rank_selection(verb_list,1,0,len(verb_list)-1,n)
+    rank_selection(verb_list,1,0,len(verb_list)-1,n) # select top n words
     result = []
     for t in verb_list[-n:]:
         result.append(t[0])
     return result
+
+
 def get_summary(path):
-    """
-    print get summary of the current type of document
+    """print get summary of the current type of document
     including
     1 number of documents
     2 number of unique words
     3 top 10 most frequent non stop words
     4 top 10 most frequent verbs
-    @param path, the directory of all documents
-    @return none
+
+    Arguments:
+    path -- the directory of all documents
+    
     """
     if not os.path.isdir(path):
         print "Invalid input path"
@@ -184,23 +220,34 @@ def get_summary(path):
     print("10 most frequent verbs: ")
     for s in verbs:
         print(s)
+
+
 def naive_bayes_train(path1,label1,path2,label2):
-    """
-    train the naive bayes classifier
-    @param path1, directory containing all type 1 document
-    @param label1, string, the type1 name
-    @param path2, directory containing all type 2 document
-    @param label2, string, the type2 name
-    @return dictionary, key:label, value: word_count table
+    """train the naive bayes classifier
+    
+    Arguments:
+    path1 -- directory containing all type 1 document
+    label1 -- string, the type1 name
+    path2 -- directory containing all type 2 document
+    label2 -- string, the type2 name
+
+    return dictionary, key:label, value: word_count table
+    
     """
     result = {label1:read_files(path1),label2:read_files(path2)}
     return result
+
+
 def naive_bayes_predict(model,doc):
-    """
-    predict the type of a document given the model
-    @param model, dictionary, the naive bayes classifier
-    @param doc, string, the document body
-    @return string, the predicted type
+    """ predict the type of a document given the model
+
+    Arguments:
+
+    model -- dictionary, the naive bayes classifier
+    doc -- string, the document body
+
+    return string, the predicted type
+    
     """
     word_list = word_tokenizer(doc)
     # compute the score for each type
@@ -216,19 +263,23 @@ def naive_bayes_predict(model,doc):
         if model["typeb"].has_key(w):
             count_typeb = model["typeb"][w]
         # use plus 1 smooth term
-        typea_score += math.log(float(count_typea+1)/(typea_total+len(model["typea"])))
-        typeb_score += math.log(float(count_typeb+1)/(typeb_total+len(model["typeb"])))
-    typea_score += math.log(float(typea_total)/(typea_total+typeb_total))
-    typeb_score += math.log(float(typeb_total)/(typea_total+typeb_total))
+        typea_score += math.log(float(count_typea+1) / (typea_total+len(model["typea"])))
+        typeb_score += math.log(float(count_typeb+1) / (typeb_total+len(model["typeb"])))
+    typea_score += math.log(float(typea_total) / (typea_total+typeb_total))
+    typeb_score += math.log(float(typeb_total) / (typea_total+typeb_total))
     if typea_score >= typeb_score:
         return "typea"
     else:
         return "typeb"
+
+
 def naive_bayes_classify(path,model):
-    """
-    predict the type of every document in the directory
-    @param path, directory containing all documents
-    @param model, dictionary, the naive bayes model
+    """predict the type of every document in the directory
+
+    Arguments:
+    path -- directory containing all documents
+    model -- dictionary, the naive bayes model
+
     """
     if not os.path.isdir(path):
         print "Invalid input path"
@@ -241,7 +292,18 @@ def naive_bayes_classify(path,model):
         with open(file_path,'r') as fid:
             tmp_doc = fid.read()
         print(f+" type: " + naive_bayes_predict(model,tmp_doc))
+
+
 if __name__ == "__main__":
+    # set up the argument parser
+    parser = argparse.ArgumentParser(description='Parse the arguments.')
+    parser.add_argument('-s', '--stat', metavar='path', nargs=1,
+                        help='get the statistics of current type of documents.')
+    parser.add_argument('-c', '--classification', metavar='path', nargs=2, 
+                        help='build classifier and test it, first path is'+ 
+                        'training data path, second path is test data path.')
+    args = parser.parse_args() # parse all arguments
+    '''
     if sys.argv[1] != "-s" and sys.argv[1] != "-c":
         print("Usage: \n" +
         "to get summary of a type of document, use \n" +
@@ -259,3 +321,14 @@ if __name__ == "__main__":
         else:
             model = naive_bayes_train(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5])
             naive_bayes_classify(sys.argv[6],model)
+    '''
+    if  args.stat != None:
+        get_summary(args.stat[0])
+
+    if  args.classification != None:
+        # get the labels first
+        train_labels = os.listdir(args.classification[0])
+        model = naive_bayes_train(args.classification[0]+'/'+train_labels[0], 
+                                  train_labels[0], args.classification[0]+'/'
+                                  +train_labels[1], train_labels[1])
+        naive_bayes_classify(args.classification[1]+'/'+train_labels[0], model)
